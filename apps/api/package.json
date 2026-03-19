@@ -1,0 +1,8 @@
+{
+  "name": "@acceptance-agent/api",
+  "private": true,
+  "scripts": {
+    "dev": ".venv/bin/python3 -m uvicorn main:app --reload --host 127.0.0.1 --port 8000",
+    "start": ".venv/bin/python3 -m uvicorn main:app --host 127.0.0.1 --port 8000"
+  }
+}
