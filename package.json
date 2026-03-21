@@ -1,0 +1,17 @@
+{
+  "name": "acceptance-agent",
+  "private": true,
+  "scripts": {
+    "bootstrap": "npm install && npm run install:web && npm run install:api",
+    "dev": "concurrently -n web,api -c blue,green \"npm run dev:web\" \"npm run dev:api\"",
+    "dev:web": "npm --prefix apps/web run dev",
+    "dev:api": "npm --prefix apps/api run dev",
+    "lint": "npm --prefix apps/web run lint",
+    "install:web": "npm --prefix apps/web install",
+    "install:api": "python3 -m venv apps/api/.venv && apps/api/.venv/bin/python3 -m pip install -r apps/api/requirements.txt"
+  },
+  "devDependencies": {
+    "concurrently": "^9.2.1",
+    "playwright": "^1.58.2"
+  }
+}

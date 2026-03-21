@@ -1,3 +1,18 @@
+Metadata-Version: 2.4
+Name: acceptance-agent
+Version: 0.1.0
+Summary: Acceptance evidence agent core, CLI, and API adapters
+Requires-Python: >=3.9
+Description-Content-Type: text/markdown
+Requires-Dist: fastapi<1.0,>=0.116
+Requires-Dist: uvicorn[standard]<1.0,>=0.35
+Requires-Dist: python-multipart<1.0,>=0.0.9
+Requires-Dist: python-docx<2.0,>=1.1.2
+Requires-Dist: openai<2.0,>=1.54.0
+Requires-Dist: httpx<1.0,>=0.28.0
+Requires-Dist: typer<1.0,>=0.15.0
+Requires-Dist: pydantic<3.0,>=2.0
+
 # acceptance-agent
 
 轻量 monorepo，包含：
@@ -62,7 +77,6 @@ python -m pip install --upgrade pip setuptools wheel
 
 ```bash
 acceptance-agent --help
-acceptance-agent create-task --title <title> --description <description>
 acceptance-agent parse-template --task-id <task_id>
 acceptance-agent parse-materials --task-id <task_id>
 acceptance-agent match-fill-rules --task-id <task_id>
