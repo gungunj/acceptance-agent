@@ -1,6 +1,8 @@
 "use client";
 
-import { ChangeEvent, FormEvent, useEffect, useState } from "react";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { FormEvent, useEffect, useRef, useState } from "react";
 
 type HealthResponse = {
   ok: boolean;
@@ -8,35 +10,32 @@ type HealthResponse = {
   status: string;
 };
 
-type UploadedFileRecord = {
-  file_id: string;
-  task_id: string;
-  filename: string | null;
-  content_type: string | null;
-  size: number;
-  path: string;
-};
-
 type Task = {
   id: string;
   title: string;
   description: string | null;
   status: "pending";
-  files: UploadedFileRecord[];
 };
 
 const apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://127.0.0.1:8000";
 
 export default function Home() {
+  const router = useRouter();
+  const initializedRef = useRef(false);
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
-  const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [health, setHealth] = useState<HealthResponse | null>(null);
-  const [task, setTask] = useState<Task | null>(null);
+  const [tasks, setTasks] = useState<Task[]>([]);
+  const [loadingTasks, setLoadingTasks] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    if (initializedRef.current) {
+      return;
+    }
+    initializedRef.current = true;
+
     let active = true;
 
     async function loadHealth() {
@@ -60,19 +59,37 @@ export default function Home() {
     }
 
     void loadHealth();
+    void refreshTaskList();
 
     return () => {
       active = false;
     };
   }, []);
 
+  async function refreshTaskList() {
+    setLoadingTasks(true);
+
+    try {
+      const response = await fetch(`${apiBaseUrl}/tasks`, {
+        cache: "no-store",
+      });
+      if (!response.ok) {
+        throw new Error(`Fetch task list failed with status ${response.status}`);
+      }
+
+      const data = (await response.json()) as Task[];
+      setTasks(data);
+    } catch (taskError) {
+      setError(
+        taskError instanceof Error ? taskError.message : "Failed to fetch task list",
+      );
+    } finally {
+      setLoadingTasks(false);
+    }
+  }
+
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-
-    if (!selectedFile) {
-      setError("请先选择一个模板或素材文件。");
-      return;
-    }
 
     setSubmitting(true);
     setError(null);
@@ -94,30 +111,8 @@ export default function Home() {
       }
 
       const createdTask = (await taskResponse.json()) as Task;
-
-      const formData = new FormData();
-      formData.append("task_id", createdTask.id);
-      formData.append("file", selectedFile);
-
-      const uploadResponse = await fetch(`${apiBaseUrl}/files/upload`, {
-        method: "POST",
-        body: formData,
-      });
-
-      if (!uploadResponse.ok) {
-        throw new Error(`Upload failed with status ${uploadResponse.status}`);
-      }
-
-      const detailResponse = await fetch(`${apiBaseUrl}/tasks/${createdTask.id}`, {
-        cache: "no-store",
-      });
-
-      if (!detailResponse.ok) {
-        throw new Error(`Fetch task detail failed with status ${detailResponse.status}`);
-      }
-
-      const detail = (await detailResponse.json()) as Task;
-      setTask(detail);
+      await refreshTaskList();
+      router.push(`/tasks/${createdTask.id}`);
     } catch (submitError) {
       setError(
         submitError instanceof Error ? submitError.message : "Request failed",
@@ -125,10 +120,6 @@ export default function Home() {
     } finally {
       setSubmitting(false);
     }
-  }
-
-  function handleFileChange(event: ChangeEvent<HTMLInputElement>) {
-    setSelectedFile(event.target.files?.[0] ?? null);
   }
 
   return (
@@ -140,19 +131,15 @@ export default function Home() {
               Acceptance Agent
             </p>
             <h1 className="text-4xl font-semibold tracking-tight text-white">
-              创建任务并上传模板 / 素材
+              创建任务并进入详情页
             </h1>
             <p className="max-w-2xl text-base leading-7 text-stone-300">
-              当前页面会串起整套链路：前端创建任务，上传文件到后端落盘，再根据返回的
-              <code className="mx-1 rounded bg-white/10 px-1.5 py-0.5 text-sm">
-                task_id
-              </code>
-              拉取并展示任务详情。
+              先创建任务，再在详情页上传多个文件、设模板、解析模板并查看字段列表。
             </p>
           </div>
 
           <form className="mt-10 space-y-6" onSubmit={handleSubmit}>
-            <div className="grid gap-6 md:grid-cols-2">
+            <div className="grid gap-6 md:grid-cols-1">
               <label className="block">
                 <span className="mb-2 block text-sm text-stone-300">任务标题</span>
                 <input
@@ -160,16 +147,6 @@ export default function Home() {
                   placeholder="例如：电商主图审核"
                   value={title}
                   onChange={(event) => setTitle(event.target.value)}
-                  required
-                />
-              </label>
-
-              <label className="block">
-                <span className="mb-2 block text-sm text-stone-300">模板 / 素材文件</span>
-                <input
-                  className="block w-full rounded-2xl border border-dashed border-white/15 bg-white/5 px-4 py-3 text-sm text-stone-300 file:mr-4 file:rounded-full file:border-0 file:bg-cyan-300 file:px-4 file:py-2 file:text-sm file:font-medium file:text-slate-950"
-                  type="file"
-                  onChange={handleFileChange}
                   required
                 />
               </label>
@@ -191,13 +168,8 @@ export default function Home() {
                 type="submit"
                 disabled={submitting}
               >
-                {submitting ? "处理中..." : "创建任务并上传"}
+                {submitting ? "创建中..." : "创建任务"}
               </button>
-              {selectedFile ? (
-                <p className="text-sm text-stone-400">
-                  已选择文件：{selectedFile.name}
-                </p>
-              ) : null}
             </div>
           </form>
 
@@ -218,26 +190,44 @@ export default function Home() {
           </div>
 
           <div className="rounded-[2rem] border border-white/10 bg-white/5 p-6">
-            <p className="text-sm text-stone-300">任务详情</p>
-            <pre className="mt-4 overflow-x-auto rounded-2xl bg-slate-950/70 p-4 text-sm leading-6 text-stone-100">
-              {JSON.stringify(
-                task ?? {
-                  task_id: null,
-                  message: "提交表单后会展示任务详情",
-                },
-                null,
-                2,
+            <div className="flex items-center justify-between gap-4">
+              <p className="text-sm text-stone-300">任务列表</p>
+              <button
+                className="rounded-full border border-cyan-300/30 bg-cyan-400/10 px-3 py-1 text-xs text-cyan-100 transition hover:bg-cyan-400/20 disabled:cursor-not-allowed disabled:border-white/10 disabled:bg-white/5 disabled:text-stone-500"
+                type="button"
+                disabled={loadingTasks}
+                onClick={() => void refreshTaskList()}
+              >
+                {loadingTasks ? "刷新中..." : "刷新任务列表"}
+              </button>
+            </div>
+            <div className="mt-4 space-y-2">
+              {tasks.length ? (
+                tasks.map((task) => (
+                  <Link
+                    key={task.id}
+                    className="block rounded-xl border border-white/10 bg-slate-950/60 px-4 py-3 text-sm text-stone-100 transition hover:border-cyan-300/30"
+                    href={`/tasks/${task.id}`}
+                  >
+                    <p className="font-medium">{task.title}</p>
+                    <p className="mt-1 font-mono text-xs text-stone-400">{task.id}</p>
+                  </Link>
+                ))
+              ) : (
+                <p className="rounded-xl border border-dashed border-white/10 bg-slate-950/60 px-4 py-3 text-sm text-stone-400">
+                  暂无任务，先创建一个任务开始流程。
+                </p>
               )}
-            </pre>
+            </div>
           </div>
 
           <div className="rounded-[2rem] border border-white/10 bg-white/5 p-6">
             <p className="text-sm text-stone-300">链路说明</p>
             <ol className="mt-4 space-y-3 text-sm leading-6 text-stone-300">
               <li>1. `POST /tasks` 创建任务</li>
-              <li>2. `POST /files/upload` 上传模板或素材，并携带 `task_id`</li>
-              <li>3. 后端将文件保存到 `apps/api/uploads/`</li>
-              <li>4. `GET /tasks/:task_id` 返回完整任务详情</li>
+              <li>2. 进入任务详情，`POST /files/upload` 一次上传多个文件</li>
+              <li>3. 文件列表中设置模板与素材</li>
+              <li>4. 对模板执行解析并查看字段列表</li>
             </ol>
           </div>
         </section>

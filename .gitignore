@@ -31,3 +31,8 @@ coverage/
 .idea/
 .vscode/
 
+data/
+skills/acceptance-evidence/.state/
+apps/api/uploads/
+apps/api/.env.example
+evals/

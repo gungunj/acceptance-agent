@@ -1,0 +1,46 @@
+{
+  "generated_at": "2026-03-20T18:06:01.716Z",
+  "task_id": "618be083-f9de-46d9-9354-7e3915e8980c",
+  "summary": {
+    "total_steps": 5,
+    "passed_steps": 4,
+    "failed_steps": 1,
+    "overall_status": "failed"
+  },
+  "artifacts": {
+    "screenshot": "/Users/zhuhaihua/Desktop/acceptance-agent/artifacts/playwright/fullflow-final-2026-03-20T18-06-00.438Z.png"
+  },
+  "steps": [
+    {
+      "name": "Open home page",
+      "status": "passed",
+      "started_at": "2026-03-20T18:06:00.875Z",
+      "duration_ms": 85
+    },
+    {
+      "name": "Create task",
+      "status": "passed",
+      "started_at": "2026-03-20T18:06:00.960Z",
+      "duration_ms": 109
+    },
+    {
+      "name": "Upload two files",
+      "status": "passed",
+      "started_at": "2026-03-20T18:06:01.069Z",
+      "duration_ms": 61
+    },
+    {
+      "name": "Set template and asset roles",
+      "status": "passed",
+      "started_at": "2026-03-20T18:06:01.130Z",
+      "duration_ms": 161
+    },
+    {
+      "name": "Parse template and confirm",
+      "status": "failed",
+      "started_at": "2026-03-20T18:06:01.291Z",
+      "duration_ms": 3,
+      "error": "Attempting to serialize unexpected value at position \"_frame._platform.boxedStackPrefixes\": () => {\n    if (process.env.PWDEBUGIMPL)\n      return [];\n    return [coreDir, ...boxedStackPrefixes];\n  }"
+    }
+  ]
+}

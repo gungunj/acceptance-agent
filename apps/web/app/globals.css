@@ -1,5 +1,8 @@
 @import "tailwindcss";
 
+/* Ensure Tailwind sees all route files even when Next.js/Turbopack root inference is off. */
+@source "./**/*.{js,jsx,ts,tsx}";
+
 :root {
   --background: #ffffff;
   --foreground: #171717;
@@ -22,5 +25,4 @@
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
 }

@@ -1,0 +1,64 @@
+{
+  "generated_at": "2026-03-20T18:04:38.372Z",
+  "task_id": "28a71020-a4df-4e64-92f7-25ed2cb373d6",
+  "summary": {
+    "total_steps": 8,
+    "passed_steps": 7,
+    "failed_steps": 1,
+    "overall_status": "failed"
+  },
+  "artifacts": {
+    "screenshot": "/Users/zhuhaihua/Desktop/acceptance-agent/artifacts/playwright/fullflow-final-2026-03-20T18-03-56.601Z.png"
+  },
+  "steps": [
+    {
+      "name": "Open home page",
+      "status": "passed",
+      "started_at": "2026-03-20T18:04:00.921Z",
+      "duration_ms": 108
+    },
+    {
+      "name": "Create task",
+      "status": "passed",
+      "started_at": "2026-03-20T18:04:01.029Z",
+      "duration_ms": 1247
+    },
+    {
+      "name": "Upload two files",
+      "status": "passed",
+      "started_at": "2026-03-20T18:04:02.276Z",
+      "duration_ms": 69
+    },
+    {
+      "name": "Set template and asset roles",
+      "status": "passed",
+      "started_at": "2026-03-20T18:04:02.345Z",
+      "duration_ms": 147
+    },
+    {
+      "name": "Parse template and confirm",
+      "status": "passed",
+      "started_at": "2026-03-20T18:04:02.492Z",
+      "duration_ms": 55
+    },
+    {
+      "name": "Parse materials",
+      "status": "passed",
+      "started_at": "2026-03-20T18:04:02.547Z",
+      "duration_ms": 55
+    },
+    {
+      "name": "Match fill nodes",
+      "status": "passed",
+      "started_at": "2026-03-20T18:04:02.602Z",
+      "duration_ms": 185
+    },
+    {
+      "name": "Resolve fill results",
+      "status": "failed",
+      "started_at": "2026-03-20T18:04:02.787Z",
+      "duration_ms": 30010,
+      "error": "locator.click: Timeout 30000ms exceeded.\nCall log:\n\u001b[2m  - waiting for getByRole('button', { name: '3) 解析 fill 结果' })\u001b[22m\n\u001b[2m    - locator resolved to <button disabled type=\"button\" class=\"rounded-xl border border-emerald-300/30 bg-emerald-400/10 px-4 py-2 text-sm font-medium text-emerald-100 transition hover:bg-emerald-400/20 disabled:cursor-not-allowed disabled:border-white/10 disabled:bg-white/5 disabled:text-stone-500\">3) 解析 fill 结果</button>\u001b[22m\n\u001b[2m  - attempting click action\u001b[22m\n\u001b[2m    2 × waiting for element to be visible, enabled and stable\u001b[22m\n\u001b[2m      - element is not enabled\u001b[22m\n\u001b[2m    - retrying click action\u001b[22m\n\u001b[2m    - waiting 20ms\u001b[22m\n\u001b[2m    2 × waiting for element to be visible, enabled and stable\u001b[22m\n\u001b[2m      - element is not enabled\u001b[22m\n\u001b[2m    - retrying click action\u001b[22m\n\u001b[2m      - waiting 100ms\u001b[22m\n\u001b[2m    58 × waiting for element to be visible, enabled and stable\u001b[22m\n\u001b[2m       - element is not enabled\u001b[22m\n\u001b[2m     - retrying click action\u001b[22m\n\u001b[2m       - waiting 500ms\u001b[22m\n"
+    }
+  ]
+}

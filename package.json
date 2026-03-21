@@ -11,6 +11,7 @@
     "install:api": "python3 -m venv apps/api/.venv && apps/api/.venv/bin/python3 -m pip install -r apps/api/requirements.txt"
   },
   "devDependencies": {
-    "concurrently": "^9.2.1"
+    "concurrently": "^9.2.1",
+    "playwright": "^1.58.2"
   }
 }

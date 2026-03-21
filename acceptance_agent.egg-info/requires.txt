@@ -1,0 +1,8 @@
+fastapi<1.0,>=0.116
+uvicorn[standard]<1.0,>=0.35
+python-multipart<1.0,>=0.0.9
+python-docx<2.0,>=1.1.2
+openai<2.0,>=1.54.0
+httpx<1.0,>=0.28.0
+typer<1.0,>=0.15.0
+pydantic<3.0,>=2.0

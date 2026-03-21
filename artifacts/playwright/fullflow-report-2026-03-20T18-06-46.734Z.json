@@ -1,0 +1,58 @@
+{
+  "generated_at": "2026-03-20T18:07:52.824Z",
+  "task_id": "077d3f28-9702-40ab-a2fe-7cc1986c110f",
+  "summary": {
+    "total_steps": 7,
+    "passed_steps": 6,
+    "failed_steps": 1,
+    "overall_status": "failed"
+  },
+  "artifacts": {
+    "screenshot": "/Users/zhuhaihua/Desktop/acceptance-agent/artifacts/playwright/fullflow-final-2026-03-20T18-06-46.734Z.png"
+  },
+  "steps": [
+    {
+      "name": "Open home page",
+      "status": "passed",
+      "started_at": "2026-03-20T18:06:47.138Z",
+      "duration_ms": 88
+    },
+    {
+      "name": "Create task",
+      "status": "passed",
+      "started_at": "2026-03-20T18:06:47.226Z",
+      "duration_ms": 108
+    },
+    {
+      "name": "Upload two files",
+      "status": "passed",
+      "started_at": "2026-03-20T18:06:47.334Z",
+      "duration_ms": 46
+    },
+    {
+      "name": "Set template and asset roles",
+      "status": "passed",
+      "started_at": "2026-03-20T18:06:47.380Z",
+      "duration_ms": 223
+    },
+    {
+      "name": "Parse template and confirm",
+      "status": "passed",
+      "started_at": "2026-03-20T18:06:47.603Z",
+      "duration_ms": 250
+    },
+    {
+      "name": "Parse materials",
+      "status": "passed",
+      "started_at": "2026-03-20T18:06:47.853Z",
+      "duration_ms": 42
+    },
+    {
+      "name": "Match fill nodes",
+      "status": "failed",
+      "started_at": "2026-03-20T18:06:47.895Z",
+      "duration_ms": 60307,
+      "error": "Button did not become enabled in time"
+    }
+  ]
+}
