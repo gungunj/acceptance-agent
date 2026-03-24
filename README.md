@@ -122,6 +122,12 @@ cp apps/api/.env.example apps/api/.env
 
 并且 `GET /health` 会返回 preflight 摘要（`warning_count/error_count`）。
 
+章节草稿兜底（可选）：
+
+- 将白皮书（`.txt`/`.md`/`.docx`）放到 `apps/api/data/global_materials/`
+- 或在 `apps/api/.env` 中设置 `GLOBAL_MATERIALS_DIR`
+- 当 task 内素材不足时，`generate-section-drafts` 会优先使用当前 task，其次全局白皮书，再次模板兜底段落
+
 ## 常用脚本
 
 ```bash

@@ -1049,6 +1049,8 @@ def parse_materials(task_id: str) -> Task:
                 metadata={
                     "section_level": section.get("level"),
                     "section_index": section.get("section_index"),
+                    "filename": record.filename,
+                    "path": record.path,
                 },
             )
             task.material_units.append(unit)
@@ -1596,9 +1598,14 @@ def _build_fill_value(
     content = unit.content or ""
     if not content:
         return ""
+    business_keywords = {"承诺", "保密", "合同", "法务", "法律", "条款"}
+    is_business_field = any(keyword in (node_title or "") for keyword in business_keywords)
+    blocked_terms = ["甲方", "乙方", "采购编号", "投标文件", "销售合同", "通信地址", "联系方式", "联系人"]
     lines = [line.strip() for line in content.splitlines() if line.strip()]
+    if not is_business_field:
+        lines = [line for line in lines if not any(term in line for term in blocked_terms)]
     if not lines:
-        return content[:800]
+        return ""
     keywords = [item.lower() for item in _tokenize_keywords(node_title) if item]
     for line in lines:
         lowered = line.lower()

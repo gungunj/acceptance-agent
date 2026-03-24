@@ -139,7 +139,13 @@ def _section_to_resolved_node(
             level=node.level,
             parent_id=node.parent_id,
             resolved_status="missing",
-            render_payload={"type": "rich_section", "text": "", "images": []},
+            render_payload={
+                "type": "rich_section",
+                "text": "",
+                "images": [],
+                "fallback_used": False,
+                "fallback_source": "task",
+            },
             source_result_type="section_draft",
             source_result_id=node.node_id,
             gap_count=gap_count,
@@ -149,6 +155,8 @@ def _section_to_resolved_node(
         "type": "rich_section",
         "text": draft.draft_text,
         "images": [asset.model_dump() for asset in draft.inline_assets],
+        "fallback_used": bool(draft.fallback_used),
+        "fallback_source": draft.fallback_source,
     }
     return ResolvedNode(
         task_id=node.task_id,
@@ -202,6 +210,8 @@ def _mixed_to_resolved_node(
         "text": text,
         "images": images,
         "fields": fields,
+        "fallback_used": bool(draft.fallback_used) if draft else False,
+        "fallback_source": draft.fallback_source if draft else "task",
     }
     return ResolvedNode(
         task_id=node.task_id,
@@ -257,6 +267,39 @@ def _is_descendant_node(
     return False
 
 
+def _build_non_leaf_section_ids(nodes: list[material_service.TemplateNode]) -> set[str]:
+    section_ids = {node.node_id for node in nodes if node.node_type == "section"}
+    return {
+        node.parent_id
+        for node in nodes
+        if node.node_type == "section" and node.parent_id in section_ids
+    }
+
+
+def _outline_section_node(node: material_service.TemplateNode, gap_count: int) -> ResolvedNode:
+    payload = {
+        "type": "rich_section",
+        "text": "",
+        "images": [],
+        "fallback_used": False,
+        "fallback_source": "",
+    }
+    return ResolvedNode(
+        task_id=node.task_id,
+        node_id=node.node_id,
+        node_title=node.title,
+        node_type=node.node_type,
+        content_mode=node.content_mode,
+        level=node.level,
+        parent_id=node.parent_id,
+        resolved_status="ready",
+        render_payload=payload,
+        source_result_type="section_draft",
+        source_result_id=node.node_id,
+        gap_count=gap_count,
+    )
+
+
 def build_resolved_template(task_id: str) -> ResolvedTemplate:
     material_service.get_task(task_id)
     nodes = _sort_template_nodes(material_service.list_template_nodes(task_id))
@@ -267,6 +310,7 @@ def build_resolved_template(task_id: str) -> ResolvedTemplate:
     fill_by_node_id = {item.node_id: item for item in fill_results}
     draft_by_node_id = {item.node_id: item for item in section_drafts}
     node_by_id = {item.node_id: item for item in nodes}
+    non_leaf_section_ids = _build_non_leaf_section_ids(nodes)
     unit_by_id = {unit.id: unit for unit in units}
     gaps = gap_review_service.list_gap_items(task_id)
     gap_count_by_node_id: dict[str, int] = {}
@@ -292,24 +336,30 @@ def build_resolved_template(task_id: str) -> ResolvedTemplate:
             )
         elif node.content_mode == "generate" and node.node_type == "section":
             gap_count = gap_count_by_node_id.get(node.node_id, 0)
-            resolved = _section_to_resolved_node(
-                node=node,
-                draft=draft_by_node_id.get(node.node_id),
-                gap_count=gap_count,
-            )
+            if node.node_id in non_leaf_section_ids:
+                resolved = _outline_section_node(node=node, gap_count=gap_count)
+            else:
+                resolved = _section_to_resolved_node(
+                    node=node,
+                    draft=draft_by_node_id.get(node.node_id),
+                    gap_count=gap_count,
+                )
         elif node.content_mode == "mixed" and node.node_type == "section":
             gap_count = gap_count_by_node_id.get(node.node_id, 0)
-            descendant_fill_items = [
-                result
-                for result in fill_results
-                if _is_descendant_node(result.node_id, node.node_id, node_by_id)
-            ]
-            resolved = _mixed_to_resolved_node(
-                node=node,
-                draft=draft_by_node_id.get(node.node_id),
-                fill_items=descendant_fill_items,
-                gap_count=gap_count,
-            )
+            if node.node_id in non_leaf_section_ids:
+                resolved = _outline_section_node(node=node, gap_count=gap_count)
+            else:
+                direct_fill_items = [
+                    result
+                    for result in fill_results
+                    if node_by_id.get(result.node_id) and node_by_id[result.node_id].parent_id == node.node_id
+                ]
+                resolved = _mixed_to_resolved_node(
+                    node=node,
+                    draft=draft_by_node_id.get(node.node_id),
+                    fill_items=direct_fill_items,
+                    gap_count=gap_count,
+                )
         else:
             resolved = ResolvedNode(
                 task_id=node.task_id,

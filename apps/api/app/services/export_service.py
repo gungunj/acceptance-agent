@@ -1,9 +1,11 @@
 import html
+import os
 import re
 from datetime import datetime, timezone
 from typing import Literal, Optional
 
 from docx import Document
+from docx.oxml.ns import qn
 from pydantic import BaseModel
 
 from app.repositories import export_repo
@@ -24,6 +26,11 @@ def _slugify(value: str) -> str:
     slug = re.sub(r"[^\w\u4e00-\u9fff\- ]+", "", value).strip().lower()
     slug = slug.replace(" ", "-")
     return slug or "section"
+
+
+def _include_source_note() -> bool:
+    raw = os.getenv("EXPORT_INCLUDE_SOURCE_NOTE", "false").strip().lower()
+    return raw in {"1", "true", "yes", "on"}
 
 
 def _sort_resolved_nodes(
@@ -87,10 +94,12 @@ def _render_node_markdown(node: resolved_template_service.ResolvedNode) -> list[
         heading_level = min(max(node.level + 1, 2), 6)
         lines.append(f'{"#" * heading_level} {node.node_title}')
 
+        has_section_content = False
         if payload_type == "rich_section":
             text = str(payload.get("text") or "").strip()
             if text:
                 lines.append(text)
+                has_section_content = True
             images = payload.get("images") or []
             if isinstance(images, list):
                 for image in images:
@@ -103,10 +112,12 @@ def _render_node_markdown(node: resolved_template_service.ResolvedNode) -> list[
                         lines.append(f"![{caption}]({path})")
                     else:
                         lines.append(f"![{caption}](#image:{unit_id})")
+                has_section_content = has_section_content or bool(images)
         elif payload_type == "mixed_section":
             text = str(payload.get("text") or "").strip()
             if text:
                 lines.append(text)
+                has_section_content = True
             fields = payload.get("fields") or []
             if isinstance(fields, list) and fields:
                 lines.append("")
@@ -120,6 +131,7 @@ def _render_node_markdown(node: resolved_template_service.ResolvedNode) -> list[
                     lines.append(
                         f"- {field_title} ({field_status}): {field_payload if field_payload is not None else '(empty)'}"
                     )
+                has_section_content = True
             images = payload.get("images") or []
             if isinstance(images, list) and images:
                 lines.append("")
@@ -134,10 +146,23 @@ def _render_node_markdown(node: resolved_template_service.ResolvedNode) -> list[
                         lines.append(f"![{caption}]({path})")
                     else:
                         lines.append(f"![{caption}](#image:{unit_id})")
+                has_section_content = True
         elif payload_type == "text":
             value = str(payload.get("value") or "").strip()
             if value:
                 lines.append(value)
+                has_section_content = True
+        fallback_source = str(payload.get("fallback_source") or "").strip()
+        if fallback_source and _include_source_note():
+            readable = {
+                "task": "task素材",
+                "global": "全局白皮书",
+                "template": "模板兜底",
+                "llm_task_context": "任务上下文LLM兜底",
+            }.get(fallback_source, fallback_source)
+            lines.append(f"> 来源: {readable}")
+        if node.resolved_status in {"risky", "missing"} and not has_section_content:
+            lines.append("> 状态: 缺少可用正文，建议人工补充。")
     else:
         if payload_type == "image":
             caption = str(payload.get("title") or node.node_title).strip() or node.node_title
@@ -156,7 +181,7 @@ def _render_node_markdown(node: resolved_template_service.ResolvedNode) -> list[
         else:
             lines.append(f"- **{node.node_title}**: `(unresolved)`")
 
-    if node.resolved_status in {"risky", "missing"}:
+    if node.node_type != "section" and node.resolved_status in {"risky", "missing"}:
         lines.append(f"> 状态: {node.resolved_status}，建议人工复核。")
     if node.gap_count > 0:
         lines.append(f"> 关联缺口数: {node.gap_count}")
@@ -217,7 +242,7 @@ def render_resolved_template_markdown(
     resolved: resolved_template_service.ResolvedTemplate,
 ) -> str:
     nodes = _sort_resolved_nodes(resolved.nodes)
-    mirror_by_section_id, consumed_field_ids = _build_mirror_fill_by_section_id(nodes)
+    _, consumed_field_ids = _build_mirror_fill_by_section_id(nodes)
     lines: list[str] = [
         f"# 项目交付草案（任务 {resolved.task_id}）",
         "",
@@ -232,14 +257,12 @@ def render_resolved_template_markdown(
 
     section_nodes = [node for node in nodes if node.node_type == "section"]
     if section_nodes:
-        lines.append("## 目录")
+        lines.append("目录：")
         lines.append("")
         for section in section_nodes:
             indent = "  " * max(0, int(section.level) - 1)
             anchor = _slugify(section.node_title)
             lines.append(f"{indent}- [{section.node_title}](#{anchor})")
-        lines.append("")
-        lines.append("## 正文")
         lines.append("")
 
     appendix_fields: list[resolved_template_service.ResolvedNode] = []
@@ -247,13 +270,7 @@ def render_resolved_template_markdown(
         if node.node_type == "field" and node.node_id in consumed_field_ids:
             continue
         node_lines = _render_node_markdown(node)
-        if node.node_type == "section":
-            mirror_field = mirror_by_section_id.get(node.node_id)
-            if mirror_field:
-                inline_lines = _render_field_payload_inline(mirror_field)
-                if inline_lines:
-                    node_lines.extend(inline_lines)
-        elif node.node_type == "field":
+        if node.node_type == "field":
             appendix_fields.append(node)
             continue
         if node_lines:
@@ -419,10 +436,12 @@ def _apply_node_to_doc(
     if node.node_type == "section":
         heading_level = min(max(int(node.level), 1), 9)
         document.add_heading(node.node_title, level=heading_level)
+        has_section_content = False
         if payload_type in {"rich_section", "mixed_section"}:
             text = str(payload.get("text") or "").strip()
             if text:
                 document.add_paragraph(text)
+                has_section_content = True
             images = payload.get("images") or []
             if isinstance(images, list):
                 for image in images:
@@ -434,6 +453,7 @@ def _apply_node_to_doc(
                         document.add_paragraph(f"[Image] {path}")
                     if caption:
                         document.add_paragraph(f"Caption: {caption}")
+                has_section_content = has_section_content or bool(images)
             if payload_type == "mixed_section":
                 fields = payload.get("fields") or []
                 if isinstance(fields, list) and fields:
@@ -444,10 +464,21 @@ def _apply_node_to_doc(
                         title = str(field.get("node_title") or "field")
                         status = str(field.get("fill_status") or "unknown")
                         document.add_paragraph(f"- {title} ({status})")
+                    has_section_content = True
         elif payload_type == "text":
             value = str(payload.get("value") or "").strip()
             if value:
                 document.add_paragraph(value)
+                has_section_content = True
+        fallback_source = str(payload.get("fallback_source") or "").strip()
+        if fallback_source and _include_source_note():
+            readable = {
+                "task": "task素材",
+                "global": "全局白皮书",
+                "template": "模板兜底",
+                "llm_task_context": "任务上下文LLM兜底",
+            }.get(fallback_source, fallback_source)
+            document.add_paragraph(f"来源: {readable}")
         if mirror_field is not None:
             mirror_payload = mirror_field.render_payload or {}
             mirror_type = str(mirror_payload.get("type") or "")
@@ -465,6 +496,8 @@ def _apply_node_to_doc(
                 document.add_paragraph(str(mirror_payload))
             else:
                 document.add_paragraph("unresolved")
+        if node.resolved_status in {"risky", "missing"} and not has_section_content:
+            document.add_paragraph("状态: 缺少可用正文，建议人工补充。")
         return
 
     if payload_type == "image":
@@ -485,6 +518,24 @@ def _apply_node_to_doc(
     document.add_paragraph(f"{node.node_title}: unresolved")
 
 
+def _set_run_font(run, font_name: str) -> None:
+    run.font.name = font_name
+    if run._element is not None and run._element.rPr is not None:
+        run._element.rPr.rFonts.set(qn("w:eastAsia"), font_name)
+
+
+def _apply_document_font(document: Document, font_name: str = "宋体") -> None:
+    # Set base style fonts for both latin and eastAsia text.
+    style_names = ["Normal"] + [f"Heading {i}" for i in range(1, 10)]
+    for style_name in style_names:
+        style = document.styles[style_name] if style_name in [s.name for s in document.styles] else None
+        if style is None:
+            continue
+        style.font.name = font_name
+        if style._element is not None and style._element.rPr is not None:
+            style._element.rPr.rFonts.set(qn("w:eastAsia"), font_name)
+
+
 def export_word(task_id: str, rebuild: bool = True) -> ExportDocument:
     resolved = (
         resolved_template_service.build_resolved_template(task_id)
@@ -492,24 +543,11 @@ def export_word(task_id: str, rebuild: bool = True) -> ExportDocument:
         else resolved_template_service.get_resolved_template(task_id)
     )
     nodes = _sort_resolved_nodes(resolved.nodes)
-    mirror_by_section_id, consumed_field_ids = _build_mirror_fill_by_section_id(nodes)
+    _, consumed_field_ids = _build_mirror_fill_by_section_id(nodes)
     document = Document()
+    _apply_document_font(document, font_name="宋体")
     document.add_heading(f"项目交付草案（任务 {resolved.task_id}）", level=0)
-    document.add_paragraph(
-        f"summary: total={resolved.summary.total_nodes}, ready={resolved.summary.ready_nodes}, "
-        f"risky={resolved.summary.risky_nodes}, missing={resolved.summary.missing_nodes}, "
-        f"readiness={resolved.summary.export_readiness}"
-    )
     appendix_fields: list[resolved_template_service.ResolvedNode] = []
-    section_nodes = [node for node in nodes if node.node_type == "section"]
-    if section_nodes:
-        document.add_heading("目录", level=1)
-        for section in section_nodes:
-            indent = "  " * max(0, int(section.level) - 1)
-            document.add_paragraph(f"{indent}{section.node_title}")
-        # Explicitly split TOC page and body page.
-        document.add_page_break()
-        document.add_heading("正文", level=1)
 
     for node in nodes:
         if node.node_type == "field" and node.node_id in consumed_field_ids:
@@ -517,7 +555,7 @@ def export_word(task_id: str, rebuild: bool = True) -> ExportDocument:
         if node.node_type == "field":
             appendix_fields.append(node)
             continue
-        _apply_node_to_doc(document, node, mirror_field=mirror_by_section_id.get(node.node_id))
+        _apply_node_to_doc(document, node, mirror_field=None)
     if appendix_fields:
         document.add_heading("字段回填附录", level=1)
         for field_node in appendix_fields:

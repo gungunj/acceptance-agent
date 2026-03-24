@@ -84,10 +84,22 @@ def generate_section_drafts(
     task_id: str = typer.Option(..., "--task-id"),
     top_n: int = typer.Option(3, "--top-n"),
     strategy: str = typer.Option("rule", "--strategy"),
+    force_llm_context: bool = typer.Option(False, "--force-llm-context"),
+    force_context_local: bool = typer.Option(False, "--force-context-local"),
+    llm_remote_only: bool = typer.Option(False, "--llm-remote-only"),
 ):
     if strategy != "rule":
         raise typer.BadParameter("CLI deterministic mode only supports --strategy rule")
-    _print_json(workflows.generate_section_drafts(task_id=task_id, top_n=top_n, strategy=strategy))
+    _print_json(
+        workflows.generate_section_drafts(
+            task_id=task_id,
+            top_n=top_n,
+            strategy=strategy,
+            force_llm_context=force_llm_context,
+            force_context_local=force_context_local,
+            llm_remote_only=llm_remote_only,
+        )
+    )
 
 
 @app.command("generate-gaps")
